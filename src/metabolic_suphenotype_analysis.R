@@ -29,12 +29,19 @@ library(zoo)
 library(reshape2)
 library(data.table)
 
-  
+setwd("/Users/ahmedm/Dropbox/Diabetes_v4_resubmission/Metabolic_Subphenotype_Predictor_07102022/")
+
 #########################
 ###### Loading all data
 #########################
 ### Demographics
 demographics = read.csv("data/demographics_09302021_AM.csv")
+
+# Rename Normal to Normoglycmic:
+demographics[which(demographics["a1c_t2d_status"] == "Normal"), "a1c_t2d_status"] = "Normoglycemic"
+demographics[which(demographics["ogtt_t2d_status"] == "Normal"), "ogtt_t2d_status"] = "Normoglycemic"
+demographics[which(demographics["fpg_t2d_status"] == "Normal"), "fpg_t2d_status"] = "Normoglycemic"
+
 
 #### Load PRS
 prs = read.csv("data/t2d_prs.csv")
@@ -63,7 +70,7 @@ ogtt_analytes = subset(washu_combined_batches, Assay == "OGTT")
 iigi_analytes = subset(washu_combined_batches, Assay == "IIGI")
 sspg_analytes = subset(washu_combined_batches, Assay == "SSPG")
 
-## Load glucose measurements from OGTT/OGTT tests
+## Load glucose measurements from OGTT/IIGI tests
 ogtt = fread('data/ogtt.tsv')
 colnames(ogtt)[which(colnames(ogtt) == "userID")] = "SubjectID"
 ogtt$SubjectID = gsub("43883-0","S", ogtt$SubjectID)
@@ -595,7 +602,7 @@ my_sample_row <- data.frame(SSPG = ogtt_insulin_rate_clinical_demographics_annot
                             FPG = ogtt_insulin_rate_clinical_demographics_annotation$fpg_t2d_status)
 rownames(my_sample_row) <- rownames(ogtt_insulin_rate_clinical_demographics_annotation)
 dev.off()
-pdf("heatmap_insulinSecretion_OGTT_12202021.pdf", w = 10, h = 10)
+pdf("heatmap_insulinSecretion_OGTT_10272023.pdf", w = 10, h = 10)
 pheatmap(ogtt_insulin_rate_clinical_demographics_annotation[,2:13], 
          color = viridis(25), 
          cluster_cols = FALSE, 
@@ -752,10 +759,10 @@ gp = ggplot(ogtt_iigi_insulin_combined, aes(TimePoint, Insulin, col = test)) +
         legend.text=element_text(size=15, face="plain"), legend.title = element_blank(), 
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   theme(strip.text.x = element_text(size = 12, color = "black", face = "bold")) +
-  labs(y = "Insulin (uU/mL)" , x = "Time (mins)") +
+  labs(y = "Insulin (microIU/mL)" , x = "Time (mins)") +
   ggtitle("Insulin (OGTT vs IIGI)")
 gp
-ggsave('Insulin_OGTT_IIGI_09102021.pdf', h=6, w=10) 
+ggsave('figures/Insulin_OGTT_IIGI_02222023.pdf', h=6, w=10) 
 
 
 ### Calculate AUC for Insulin OGTT 0-120
@@ -829,13 +836,16 @@ write.csv(aggregated_metabolic_indicators, "aggregated_metabolic_indicators_0910
 ########################
 #######  Figure 2: Metabolic Subphenotyping levels
 ########################
+aggregated_metabolic_indicators = read.csv("../aggregated_metabolic_indicators__4_predictions_w_prs_01042022.csv")
+
 metabolic_indicators_orderd = aggregated_metabolic_indicators[order(aggregated_metabolic_indicators$a1c, 
                                                          decreasing = TRUE),]
 metabolic_indicators_orderd$SubjectID <- factor(metabolic_indicators_orderd$SubjectID, 
                                                 levels = metabolic_indicators_orderd$SubjectID) ## This to lock the order
 
 #### Plot A1C levels
-group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+# group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+group.color = c(Normoglycemic = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
 gp = ggplot(metabolic_indicators_orderd, aes(x=SubjectID, y=a1c, color  = a1c_t2d_status)) +
   geom_segment( aes(x=SubjectID, xend=SubjectID, y=0, yend=a1c, color  = a1c_t2d_status))+
   geom_point(size=3) +
@@ -861,7 +871,7 @@ gp = ggplot(metabolic_indicators_orderd, aes(x=SubjectID, y=a1c, color  = a1c_t2
   xlab("") +
   ylab("HbA1c %")
 gp
-ggsave('metabolicindicator_a1c_09102021.pdf', h=7, w=3.5); 
+ggsave('metabolicindicator_a1c_10272023.pdf', h=7, w=3.5); 
 
 
 ### Plot SSPG levels
@@ -969,7 +979,7 @@ group.color = c(IS = "#3288BD", Intermediate = "gray", IR = "#D53E4F")
 metabolic_indicators_orderd$hepatic_ir_3classes <- factor(metabolic_indicators_orderd$hepatic_ir_3classes, 
                                                           levels = c("IS", "Intermediate", "IR"))
 gp = ggplot(metabolic_indicators_orderd, aes(x=SubjectID, y=hepatic_IR, color  = hepatic_ir_3classes)) +
-  geom_segment( aes(x=SubjectID, xend=SubjectID, y=0, yend=hepatic_IR, color  = hepatic_ir_3classes))+
+  geom_segment( aes(x=SubjectID, xend=SubjectID, y=3, yend=hepatic_IR, color  = hepatic_ir_3classes))+
   geom_point(size=3) +
   coord_flip() +
   scale_fill_manual(values = group.color) + 
@@ -992,10 +1002,11 @@ gp = ggplot(metabolic_indicators_orderd, aes(x=SubjectID, y=hepatic_IR, color  =
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   guides(color=guide_legend(nrow=2, byrow=TRUE)) +
   ggtitle("Hepatic IR") +
+  ylim(3,5.25) + 
   xlab("") +
   ylab("Hepatic IR Index")
 gp
-ggsave('metabolicindicator_hepaticIR_09102021.pdf', h=7, w=3.5)
+ggsave("/Users/ahmedm/Library/CloudStorage/Box-Box/Ahmed Metwally's Files/Stanford/cgm/43883/Manuscripts/Manuscript_1_MetabolicSubphenotyping/metabolicindicator_hepaticIR_07102022.pdf", h=7, w=3.5)
 
 
 
@@ -1108,17 +1119,17 @@ metabolic_indicators_orderd$MuscleIR_Deviance = (metabolic_indicators_orderd$ssp
 metabolic_indicators_orderd$BetaCell_Deviance = -(metabolic_indicators_orderd$DI - mean(metabolic_indicators_orderd$DI))/ sd(metabolic_indicators_orderd$DI)
 metabolic_indicators_orderd$Incretin_Deviance = -(metabolic_indicators_orderd$ie - mean(metabolic_indicators_orderd$ie))/ sd(metabolic_indicators_orderd$ie)
 metabolic_indicators_orderd$HepaticIR_Deviance = (metabolic_indicators_orderd$hepatic_IR - mean(metabolic_indicators_orderd$hepatic_IR))/ sd(metabolic_indicators_orderd$hepatic_IR)
-metabolic_indicators_orderd$total_msp_score = rowSums(metabolic_indicators_orderd[, c("MuscleIR_Deviance", "BetaCell_Deviance", 
+metabolic_indicators_orderd$Total_MSP_Deviance = rowSums(metabolic_indicators_orderd[, c("MuscleIR_Deviance", "BetaCell_Deviance", 
                                                                   "Incretin_Deviance", "HepaticIR_Deviance")], na.rm = TRUE)
 rownames(metabolic_indicators_orderd) = metabolic_indicators_orderd$SubjectID
-write.csv(metabolic_indicators_orderd, file = "metabolic_indicators_risk_score_09102021.csv")
+write.csv(metabolic_indicators_orderd, file = "metabolic_indicators_risk_score_10272023.csv")
 
 
 #### Heatmap based on deviance of metabolic phenotypes
 dev.off()
-pdf("DominantMetabolicPhenotype_tstat_09102021.pdf", width = 5, height = 7)
+pdf("DominantMetabolicPhenotype_with_Total_MSP_Deviance_10272023.pdf", width = 5, height = 7)
 pheatmap(metabolic_indicators_orderd[, c("MuscleIR_Deviance", "BetaCell_Deviance", 
-                                  "Incretin_Deviance", "HepaticIR_Deviance")],
+                                  "Incretin_Deviance", "HepaticIR_Deviance", "Total_MSP_Deviance")],
          cluster_rows = TRUE, 
          cluster_cols = TRUE,
          color = RColorBrewer::brewer.pal(100, "YlOrRd"), #RColorBrewer::brewer.pal(4, "Purples"), #myColor,
@@ -1164,6 +1175,41 @@ rownames(dt) = dt$ogtt_min
 dt = dt[,-1]
 ogtt_dt_imputed = apply(dt, 2, na_interpolation)
 
+
+### Calculate number of missing data per subjects
+sum(is.na(dt$S21))
+
+
+
+na_count <-sapply(dt, function(y) sum(length(which(is.na(y)))))
+na_count
+barplot(na_count, main="Car Distribution",
+        xlab="Number of Gears")
+gp
+
+names(na_count)
+ee = as.data.frame(na_count)
+ee$subject = names(na_count)
+
+gp = ggplot(ee, aes(x=subject, y=na_count)) +
+  geom_bar(stat = "identity") + 
+  # scale_fill_manual(values=cbPalette) + 
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 3)) + 
+  theme(legend.position="top") + 
+  theme(axis.text.x = element_text(colour="black", size=10, angle=90, hjust=0.5, vjust=0.5, face="plain"),
+        axis.text.y = element_text(colour="black", size=10, angle=0, hjust=0.5, vjust=0.5, face="plain"),
+        axis.title.x = element_text(colour="black", size=12, angle=0, hjust=.5, vjust=0.5, face="bold"),
+        axis.title.y = element_text(colour="black", size=12, angle=90, hjust=.5, vjust=.5, face="bold"),
+        legend.text=element_text(size=14, face="plain"), #legend.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  theme(strip.text.x = element_text(size = 14, color = "black", face = "bold")) +
+  labs(y = "# of missing timepoints", x = "") +
+  ggtitle("Missing glucose timepoints during OGTT")
+
+gp
+ggsave(sprintf('/Users/ahmedm/Dropbox/Diabetes_v4_resubmission/Metabolic_Subphenotype_Predictor_07102022/figures/Missing_data.pdf'), h=3, w=8)
+
 ######## Normalize imputed OGTT timeseries 
 znorm <- function(ts){
   ts.mean <- mean(ts)
@@ -1187,6 +1233,39 @@ ogtt_imputed_normalized_smoothed_melted = reshape2::melt(as.matrix(ogtt_imputed_
 names(ogtt_imputed_normalized_smoothed_melted) = c("ogtt_min", "SubjectID", "ogtt_value")
 
 
+#### Visualized smoothed vs nonsmoothes curves
+ogtt_imputed_normalized_melted
+ogtt_imputed_normalized_smoothed_melted
+
+
+tmp_normalized = ogtt_imputed_normalized_melted
+tmp_normalized$type = "non_smoothed"
+
+tmp_normalized_smoothed = ogtt_imputed_normalized_smoothed_melted
+tmp_normalized_smoothed$type = "smoothed"
+
+tmp_smoothed_nonsmoothed = rbind(tmp_normalized, tmp_normalized_smoothed)
+
+gp = ggplot(tmp_smoothed_nonsmoothed, aes(ogtt_min, ogtt_value, col = type)) + 
+  geom_line(aes(group=type), alpha=0.8, size = 1.5) + 
+  scale_color_manual(values=c("#56B4E9", "#E69F00", "#999999")) + 
+  facet_wrap(~SubjectID, nrow = 4) +
+  theme_bw() +
+  theme(legend.position="top") + 
+  theme(axis.text.x = element_text(colour="black", size=10, angle=45, hjust=0.5, vjust=0.5, face="plain"),
+        axis.text.y = element_text(colour="black", size=10, angle=0, hjust=0.5, vjust=0.5, face="bold"),
+        axis.title.x = element_text(colour="black", size=12, angle=0, hjust=.5, vjust=0.5, face="bold"),
+        axis.title.y = element_text(colour="black", size=12, angle=90, hjust=.5, vjust=.5, face="bold"),
+        legend.text=element_text(size=15, face="plain"), legend.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  theme(strip.text.x = element_text(size = 12, color = "black", face = "bold")) +
+  labs(y = "Z-normalized glucose concentration", x = "Time (mins)") +
+  ggtitle("Z-normalized smoothed vs non-smoothed OGTT glucose timeseries")
+gp
+ggsave('figures/smoothed_nonsmoothed.pdf', h=6, w=10)
+
+
+
 #### Order OGTT curves based on a1c and choose the 32 subjects
 dem_a1c = demographics[, c("SubjectID", "a1c")]
 a1c_myList <- as.list(dem_a1c$a1c)
@@ -1202,7 +1281,8 @@ ogtt_imputed_33 = ogtt_imputed[which(ogtt_imputed$SubjectID %in% dem_a1c$Subject
 ogtt_imputed_33$SubjectID = factor(ogtt_imputed_33$SubjectID, levels=ogtt_order)
 ogtt_imputed_33_a1c_group = merge(ogtt_imputed_33, demographics, by = "SubjectID")
 
-group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+# group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+group.color = c(Normoglycemic = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
 gp = ggplot(ogtt_imputed_33_a1c_group, aes(ogtt_min, ogtt_value)) + 
   geom_line(aes(group=SubjectID, color = a1c_t2d_status), alpha=0.8, size = 1.5) + 
   geom_hline(yintercept=50, linetype="dashed", color = "yellow", alpha = 0.6) +
@@ -1224,7 +1304,7 @@ gp = ggplot(ogtt_imputed_33_a1c_group, aes(ogtt_min, ogtt_value)) +
   labs(y = "Glucose (mg/dL)", x = "Time (mins)") +
   ggtitle("")
 gp
-ggsave('ogtt_imputed_ordered_colored_12202021.pdf', h=6, w=10); 
+ggsave('ogtt_imputed_ordered_colored_10272023.pdf', h=6, w=10); 
 
 
 
@@ -1390,6 +1470,11 @@ ogtt_iigi_evaluation_summary = apply(ogtt_iigi_evaluation, 2, summary)
 write.csv(ogtt_iigi_evaluation_summary, file = "ogtt_iigi_evaluation_summary_09102021.csv")
 
 
+## Stat
+stat_tmp = as.data.frame(ogtt_iigi_evaluation)
+
+mean(stat_tmp$ogtt_iigi_cor)
+sd(stat_tmp$ogtt_iigi_cor)
 
 # ######################
 # ### PCA of OGTT TS
@@ -1581,6 +1666,104 @@ ogtt_features = data.frame(ogtt_fpg = ogtt_fpg, ogtt_60 = as.numeric(ogtt_60), o
 write.csv(ogtt_features, file = "ogtt_features_09102021.csv")
 ogtt_features_demographics_clinical = merge(demographics, ogtt_features, by.x = "SubjectID", by.y = "row.names")
 write.csv(ogtt_features_demographics_clinical, file = "ogtt_features_demographics_clinical_09102021.csv")
+
+
+
+#############
+###  Correlations between PC1 and curve features
+##########
+
+### Variance explained
+summary(df_pca)[2,]
+
+
+
+df_2_pcs = df_pca$x[,c("PC1", "PC2")]
+
+correlation_PCs_OGTT_extracted_features = t(cor(df_2_pcs, ogtt_features))
+# cor.test(df_pca$x[,c("PC1")], ogtt_features$ogtt_fpg)
+
+write.csv(correlation_PCs_OGTT_extracted_features, "data/correlation_PCs_OGTT_extracted_features.csv")
+
+
+
+
+ogtt_features_mod = ogtt_features[,-which(colnames(ogtt_features) == "ogtt_time_below_basline")] 
+cor.matrix = rcorr(x = as.matrix(df_2_pcs),
+                   y = as.matrix(ogtt_features_mod), type = "pearson")
+R <- data.frame(cor.matrix$r)
+P <- data.frame(cor.matrix$P)
+
+# Data frame with r values
+R.df <- R[,-c(1:ncol(df_2_pcs))]
+R.df <- R.df[-c((ncol(df_2_pcs))+1:ncol(R)),]
+R.df
+
+# Data frame with p values
+P.df <- P[,-c(1:ncol(df_2_pcs))]
+P.df <- P.df[-c((ncol(df_2_pcs))+1:ncol(P)),]
+P.df
+
+
+##### Visualize Correlation  ###
+test_labels = as.matrix(R.df)
+test_labels[,] = ""
+# seen = vector()
+for(i in 1:nrow(P.df)){
+  for(j in 1:ncol(P.df)){
+    if(P.df[i,j] < 0.05){
+      test_labels[i,j] = "x"
+    } 
+  }
+}
+
+## Edit body of pheatmap:::draw_colnames, customizing it to your liking
+draw_colnames_45 <- function (coln, ...) {
+  m = length(coln)
+  x = (1:m)/m - 1/2/m
+  grid.text(coln, x = x, y = unit(0.96, "npc"), vjust = .5, 
+            hjust = 1, rot = 45, gp = gpar(...)) ## Was 'hjust=0' and 'rot=270'
+}
+
+## For pheatmap_1.0.8 and later:
+draw_colnames_45 <- function (coln, gaps, ...) {
+  coord = pheatmap:::find_coordinates(length(coln), gaps)
+  x = coord$coord - 0.5 * coord$size
+  res = textGrob(coln, x = x, y = unit(1, "npc") - unit(3,"bigpts"), vjust = 0.5, hjust = 1, rot = 45, gp = gpar(...))
+  return(res)}
+
+## 'Overwrite' default draw_colnames with your own version 
+assignInNamespace(x="draw_colnames", value="draw_colnames_45",
+                  ns=asNamespace("pheatmap"))
+paletteLength = 15
+brewer.pal(n = 8, name = "Spectral")
+myColor = colorRampPalette(c("#3288BD", "#f7f7f7", "#D53E4F"))(paletteLength)
+myColor = colorRampPalette(c("Purple", "#f7f7f7", "Green"))(paletteLength)
+myBreaks <- c(seq(-1, 0, length.out=ceiling(paletteLength/2) + 1),
+              seq(1/paletteLength, 1, length.out=floor(paletteLength/2)))
+
+
+
+
+dev.off()
+pdf("figures/correlation_PCs_Features.pdf", w = 11, h = 3)
+pheatmap(R.df,
+         #color = viridis(100),
+         cluster_cols = FALSE,
+         cluster_rows = FALSE,
+         display_numbers = test_labels,
+         color = myColor,
+         breaks = myBreaks,
+         fontsize = 12,
+         fontsize_number = 13,
+         angle_col = 45,
+         # main = "",
+         main = "Correlation between OGTT curve features and reduced representation (top 2 PC)"
+)
+dev.off()
+
+
+
 
 
 
@@ -2021,7 +2204,7 @@ wilcox.test(x, y)
 ################
 ### T2D PRS
 ################
-genotyping_df = read.csv("genotyping_OR_12202021.csv")
+genotyping_df = read.csv("data/genotyping_OR_12202021.csv")
 genotyping_df$subject_id = gsub("43883-0", "S", genotyping_df$subject_id)
 genotyping_df = subset(genotyping_df, subject_id !="S18")
 
@@ -2031,25 +2214,41 @@ genotyping_df$a1c_avg
 cor(genotyping_df$OR, genotyping_df$a1c_avg)
 cor.test(genotyping_df$OR, genotyping_df$a1c_avg, method="pearson")
 
+### Read Sean's Genotyping
+genotyping_df_sean = read.csv("data/CGM_genotyping_updated_08222023.csv")
+colnames(genotyping_df_sean)[1] = "subject_id"
+genotyping_df_sean = genotyping_df_sean[,c("subject_id", "T2D.GRS_norm")]
+colnames(genotyping_df_sean)
+dim(genotyping_df_sean)
 
+# Stats
+cor(indictaos_metabolic_prs_4_prediction$T2D.GRS_norm, indictaos_metabolic_prs_4_prediction$a1c)
+cor.test(indictaos_metabolic_prs_4_prediction$T2D.GRS_norm, indictaos_metabolic_prs_4_prediction$a1c, method="pearson")
+colnames(indictaos_metabolic_prs_4_prediction)
 
 ###################################################
 ##### Prepare aggregate file for classification ###
 ######################################################
-aggregated_metabolic_indicators_4_prediction = read.csv("aggregated_metabolic_indicators_09102021.csv")
+# aggregated_metabolic_indicators_4_prediction = read.csv("aggregated_metabolic_indicators_09102021.csv")
 names(genotyping_df)
 genotyping_df_sub = genotyping_df[,c("subject_id", "OR")]
-indictaos_metabolic_prs_4_prediction = merge(aggregated_metabolic_indicators_4_prediction, genotyping_df_sub, by.x = "SubjectID", by.y="subject_id")
+# indictaos_metabolic_prs_4_prediction = merge(aggregated_metabolic_indicators_4_prediction, genotyping_df_sub, by.x = "SubjectID", by.y="subject_id")
+indictaos_metabolic_prs_4_prediction = merge(metabolic_indicators_orderd, genotyping_df_sub, by.x = "SubjectID", by.y="subject_id")
 write.csv(indictaos_metabolic_prs_4_prediction, "aggregated_metabolic_indicators__4_predictions_w_prs_01042022.csv")
 
 
+## Do it for Sean's genotyping
+indictaos_metabolic_prs_4_prediction = merge(metabolic_indicators_orderd, genotyping_df_sean, by.x = "SubjectID", by.y="subject_id")
+
 
 ### Visualize T2D ordered by A1C
-group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+# group.color = c(Normal = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
+group.color = c(Normoglycemic = "#00AFBB", PreDM = "#E7B800", T2D ="#FC4E07")
 indictaos_metabolic_prs_4_prediction$a1c_t2d_status <- factor(indictaos_metabolic_prs_4_prediction$a1c_t2d_status, 
-                                       levels = c("Normal", "PreDM", "T2D"))
+                                       levels = c("Normoglycemic", "PreDM", "T2D"))
 
-gp = ggplot(indictaos_metabolic_prs_4_prediction, aes(x =  reorder(SubjectID, -OR), y = OR)) + 
+# gp = ggplot(indictaos_metabolic_prs_4_prediction, aes(x =  reorder(SubjectID, -OR), y = OR)) + 
+gp = ggplot(indictaos_metabolic_prs_4_prediction, aes(x =  reorder(SubjectID, -T2D.GRS_norm), y = T2D.GRS_norm)) + 
   geom_bar(aes(fill = a1c_t2d_status), stat = "identity") + 
   scale_fill_manual(values=group.color) +
   theme_bw() +
@@ -2069,10 +2268,10 @@ gp = ggplot(indictaos_metabolic_prs_4_prediction, aes(x =  reorder(SubjectID, -O
   labs(y = "T2D Polygenic Risk Score", x = "") +
   ggtitle("")
 gp
-ggsave(sprintf('genotyping_a1c_01032021_corrected_.pdf'), h=4, w=7)
+ggsave(sprintf('genotyping_a1c_10272023_corrected_.pdf'), h=4, w=7)
 
 
-### Corelations pvalues
+### Correlations pvalues
 pgrs_p = read.csv("genotyping/pGSR_01042021/corr_pval.csv", row.names = 1)
 pgrs_r = read.csv("genotyping/pGSR_01042021/Correlation.csv", row.names = 1)
 
@@ -2141,3 +2340,40 @@ gp = ggplot(df_corr_plot_subset, aes(x=variable, y=indicator, color=R)) +
   ylab("")
 gp
 ggsave(sprintf('prs_indicators_01032021_1.pdf'), h=7, w=4)
+
+
+
+################
+### PRS vs A1C
+##################
+
+aggregated_metabolic_indicators
+ggplot(aggregated_metabolic_indicators)
+gp = ggplot(aggregated_metabolic_indicators, aes(x=a1c, y=OR)) +
+  geom_point(aes(color=a1c_t2d_status)) +
+  geom_smooth(method='lm') +
+  theme_light() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position="right"#,
+    # legend.title = element_blank()
+  ) +
+  theme(axis.text.x = element_text(colour="black", size=14, angle=0, hjust=0.5, vjust=1, face="plain"),
+        axis.text.y = element_text(colour="black", size=14, angle=0, hjust=1, vjust=0.5, face="plain"),
+        axis.title.x = element_text(colour="black", size=14, angle=0, hjust=.5, vjust=0.5, face="bold"),
+        axis.title.y = element_text(colour="black", size=14, angle=90, hjust=.5, vjust=.5, face="bold"),
+        legend.text=element_text(size=14, face="plain"), #legend.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  ggtitle("") +
+  xlab("HbA1c") +
+  ylab("PRS")
+gp
+
+ggsave("/Users/ahmedm/Library/CloudStorage/Box-Box/Ahmed Metwally's Files/Stanford/cgm/43883/Manuscripts/Manuscript_1_MetabolicSubphenotyping/PRS_A1C.pdf", h=5, w=5)
+
+model_prs_a1c = lm(a1c~OR, aggregated_metabolic_indicators)
+summary(model_prs_a1c)
+
+
