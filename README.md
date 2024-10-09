@@ -10,6 +10,6 @@ This repo contains:
 2. ML models (training and validation): src/metabolic_subphenotype_ml.py
 3. Data (metadata, glucose time-series from plasma and CGM, and genotyping) will become available once the paper is accepted. 
 
-For any inquiry, please contact ametwall@stanford.com 
+For any inquiry, please contact ametwall@stanford.edu 
 
 
