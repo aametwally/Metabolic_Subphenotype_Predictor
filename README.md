@@ -2,7 +2,7 @@
 
 This repository includes code used in the Metabolic Subphenotyping study (currently under review). The study aims to predict the four main Type 2 Diabetes metabolic subphenotypes (muscle insulin resistance, beta-cell dysfunction, impaired incretin action, and hepatic insulin resistance) from OGTT glucose timeseries performed at the clinical research unit and home using CGM.
 
-![](/summary_figure.pdf)
+![](/summary_figure.png)
 
 
 This repo contains:
